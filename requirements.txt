@@ -1,0 +1,5 @@
+numpy==1.16.1
+pyaml==18.11.0
+PyYAML==3.13
+six==1.12.0
+websocket-client==0.54.0
