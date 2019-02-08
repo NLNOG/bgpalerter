@@ -29,6 +29,7 @@ class RisListener:
         self.hijacks = {}
         self.callbacks = {
             "hijack": [],
+            "withdrawal": [],
         }
 
         ws = websocket.WebSocket()
@@ -56,7 +57,7 @@ class RisListener:
             }
         }
 
-        self._filter(data)
+        self._filter_hijack(data)
 
     def on(self, event, callback):
         if event not in self.callbacks:
@@ -65,7 +66,6 @@ class RisListener:
             self.callbacks[event].append(callback)
 
     def _detect_hijack(self, original_prefix, original_as, hijacked_prefix, hijacking_as, peer, description):
-        print(description)
         if hijacking_as and hijacking_as != original_as:
             for call in self.callbacks["hijack"]:
                 call({
@@ -82,7 +82,18 @@ class RisListener:
                 })
         return
 
-    def _filter(self, data):
+    def _filter_visibility(self, data):
+        item = data["data"]
+        str_prefix = item["prefix"]
+        peer = item["peer"]
+
+        for call in self.callbacks["withdrawal"]:
+            call({
+                "prefix": str_prefix,
+                "peer": peer
+            })
+
+    def _filter_hijack(self, data):
         item = data["data"]
         str_prefix = item["prefix"]
         prefix = ipaddress.ip_network(str_prefix)
@@ -122,7 +133,7 @@ class RisListener:
                     "prefix": prefix,
                     "moreSpecific": True,
                     "type": "UPDATE",
-                    "require": "announcements",
+                    # "require": "announcements",
                     "socketOptions": {
                         "includeRaw": False,
                         "explodePrefixes": True,
@@ -133,4 +144,7 @@ class RisListener:
         for data in self.ws:
             parsed = json.loads(data)
             if parsed["type"] == "ris_message":
-                self._filter(parsed)
+                if parsed["source"] == "announcements":
+                    self._filter_hijack(parsed)
+                elif parsed["source"] == "withdrawals":
+                    self._filter_visibility(parsed)

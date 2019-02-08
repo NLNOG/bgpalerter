@@ -13,8 +13,11 @@ slack-web-hook: https://hooks.slack.com/services/XXXX/XXXXXX
 monitored-prefixes-files:
     - monitored_prefixes.yml
 
+# After how many announcements from different peers we trigger an alter?
+number-peers-before-hijack-alert: 5
 
-number-peers-before-alert: 5
+# After how many withdrawals from different peers we trigger an alter?
+number-peers-before-low-visibility-alert: 4
 
 # 10 seconds is the default
 repeat-alert-after-seconds: 10
@@ -25,3 +28,4 @@ repeat-status-heartbeat-after-seconds: 20
 
 # stop sending the same alert after x seconds. Default 600
 reset-after-seconds: 400
+
