@@ -27,7 +27,7 @@ class BGPalerter:
         }
         self.reset_called = False
         self._check_stats()
-        self._heartbeat()
+        # self._heartbeat()
 
         ris = RisListener(self.config.get("websocket-data-service"))
         ris.on("hijack", self._collect_stats_hijack)
