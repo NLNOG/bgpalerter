@@ -59,6 +59,14 @@ class RisListener:
 
         self._filter_hijack(data)
 
+        data = {
+            "data": {
+                "prefix": "84.205.65.0/25",
+                "peer": "ams01"
+            }
+        }
+        self._filter_visibility(data)
+
     def on(self, event, callback):
         if event not in self.callbacks:
             raise Exception('This is not a valid event: ' + event)
@@ -86,12 +94,15 @@ class RisListener:
         item = data["data"]
         str_prefix = item["prefix"]
         peer = item["peer"]
+        prefix = ipaddress.ip_network(str_prefix)
+        same_version_prefix_index = self.prefixes_index[str(prefix.version)]
 
-        for call in self.callbacks["withdrawal"]:
-            call({
-                "prefix": str_prefix,
-                "peer": peer
-            })
+        if prefix in same_version_prefix_index:
+            for call in self.callbacks["withdrawal"]:
+                call({
+                    "prefix": str_prefix,
+                    "peer": peer
+                })
 
     def _filter_hijack(self, data):
         item = data["data"]
@@ -133,7 +144,6 @@ class RisListener:
                     "prefix": prefix,
                     "moreSpecific": True,
                     "type": "UPDATE",
-                    # "require": "announcements",
                     "socketOptions": {
                         "includeRaw": False,
                         "explodePrefixes": True,
@@ -142,9 +152,12 @@ class RisListener:
             }))
 
         for data in self.ws:
-            parsed = json.loads(data)
-            if parsed["type"] == "ris_message":
-                if parsed["source"] == "announcements":
-                    self._filter_hijack(parsed)
-                elif parsed["source"] == "withdrawals":
-                    self._filter_visibility(parsed)
+            try:
+                parsed = json.loads(data)
+                if parsed and type in parsed and parsed["type"] == "ris_message" and data in parsed:
+                    if parsed["data"]["source"] == "announcements":
+                        self._filter_hijack(parsed)
+                    elif parsed["data"]["source"] == "withdrawals":
+                        self._filter_visibility(parsed)
+            except:
+                print("Error while reading the JSON from WS")
