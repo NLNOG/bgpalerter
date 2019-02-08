@@ -1,19 +1,9 @@
-27.114.0.0/17:
-    description: OCN
-    base_asn: 4713
+84.205.64.0/24:
+    description: A description
+    base_asn: 3333
     ignore_morespec: False
 
-58.88.0.0/13:
-    description: OCN
-    base_asn: 4713
-#    ignore_morespec: False
-
-60.32.0.0/12:
-    description: OCN
-    base_asn: 4713
-    ignore_morespec: False
-
-61.112.0.0/16:
-    description: OCN
-    base_asn: 4713
+2001:7FB:FE06::/48:
+    description: Another prefix
+    base_asn: 3333
     ignore_morespec: False
