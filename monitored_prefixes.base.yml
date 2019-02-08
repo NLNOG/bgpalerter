@@ -1,0 +1,9 @@
+84.205.64.0/24:
+    description: A description
+    base_asn: 3333
+    ignore_morespec: False
+
+2001:7FB:FE06::/48:
+    description: Another prefix
+    base_asn: 3333
+    ignore_morespec: False
