@@ -6,6 +6,12 @@ websocket-data-service: wss://ris-live.ripe.net/v1/ws/
 # The slack integration
 slack-web-hook: https://hooks.slack.com/services/XXXX/XXXXXX
 
+sender-notification-email: me@test.net
+
+notifications-emails:
+    - email1@test.net
+    - email2@test.net
+
 # The file containing the monitored prefixes. Please see monitored_prefixes_test.yml for an example
 # This is an array (use new lines and dashes!)
 monitored-prefixes-files:

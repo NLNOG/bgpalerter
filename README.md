@@ -41,7 +41,7 @@ In runner.py you can subscribe to the following event names:
 - difference (type 3)
 - heartbeat (status of the monitor)
 
-As an example the script sends the notifications to a slack channel (configurable in config.yml) but you can subscribe to the event whatever callback you want.
+As an example the script sends the notifications to a slack channel or to a list of email addresses (both configurable in config.yml) but you can subscribe to the event whatever callback you want.
 
 
 
