@@ -29,8 +29,8 @@ def send_to_slack(message):
 
 
 def send_email(message):
-    email_from = config.get("sender-notification-email")
-    email_to = config.get("notifications-emails")
+    email_from = config.get("sender-notifications-email")
+    email_to = config.get("notified-emails")
 
     msg = MIMEText(message)
     msg['Subject'] = 'BGP alert'
