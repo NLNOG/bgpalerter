@@ -6,9 +6,9 @@ websocket-data-service: wss://ris-live.ripe.net/v1/ws/
 # The slack integration
 slack-web-hook: https://hooks.slack.com/services/XXXX/XXXXXX
 
-sender-notification-email: me@test.net
+sender-notifications-email: me@test.net
 
-notifications-emails:
+notified-emails:
     - email1@test.net
     - email2@test.net
 

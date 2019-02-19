@@ -41,6 +41,10 @@ def send_email(message):
     server.sendmail(email_from, email_to, msg.as_string())
     server.quit()
 
+
+send_to_slack("Starting to monitor...")
+# send_email("Starting to monitor...")
+
 # change the way you want to be notified below
 alerter = BGPalerter(config)
 
