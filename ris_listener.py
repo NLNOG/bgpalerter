@@ -1,15 +1,7 @@
 # BGPalerter
 # Copyright (C) 2019  Massimo Candela <https://massimocandela.com>
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, version 3 of the License.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Licensed under BSD 3-Clause License. See LICENSE for more details.
 
 import json
 import websocket
@@ -30,14 +22,12 @@ class RisListener:
         self.callbacks = {
             "hijack": [],
             "withdrawal": [],
+            "difference": []
         }
 
         ws = websocket.WebSocket()
         self.ws = ws
         self._connect()
-
-        # t = Timer(5, self._fake)
-        # t.start()
 
         def ping():
             ws.send('2')
@@ -47,25 +37,6 @@ class RisListener:
 
     def _connect(self):
         self.ws.connect(self.url)
-
-    def _fake(self):
-        data = {
-            "data": {
-                "prefix": "84.205.65.0/25",
-                "peer": "192.168.1.1",
-                "path": [123, 125, 3334],
-            }
-        }
-
-        self._filter_hijack(data)
-
-        data = {
-            "data": {
-                "prefix": "84.205.65.0/25",
-                "peer": "ams01"
-            }
-        }
-        self._filter_visibility(data)
 
     def on(self, event, callback):
         if event not in self.callbacks:
@@ -88,10 +59,21 @@ class RisListener:
                     "description": description,
                     "peer": peer
                 })
-        return
+        else:
+            for call in self.callbacks["difference"]:
+                call({
+                    "expected": {
+                        "prefix": original_prefix
+                    },
+                    "altered": {
+                        "prefix": hijacked_prefix
+                    },
+                    "originAs": original_as,
+                    "description": description,
+                    "peer": peer
+                })
 
-    def _filter_visibility(self, data):
-        item = data["data"]
+    def _filter_visibility(self, item):
         str_prefix = item["prefix"]
         peer = item["peer"]
         prefix = ipaddress.ip_network(str_prefix)
@@ -104,9 +86,12 @@ class RisListener:
                     "peer": peer
                 })
 
-    def _filter_hijack(self, data):
-        item = data["data"]
-        str_prefix = item["prefix"]
+    def _filter_hijack(self, item):
+        str_prefix = ""
+        try:
+            str_prefix = item["prefix"]
+        except:
+            print(item)
         prefix = ipaddress.ip_network(str_prefix)
 
         same_version_prefix_index = self.prefixes_index[str(prefix.version)]
@@ -127,6 +112,34 @@ class RisListener:
 
         return  # nothing strange
 
+    def unpack(self, json_data):
+        data = json_data["data"]
+        unpacked = []
+
+        if "announcements" in data:
+            for announcement in data["announcements"]:
+                next_hop = announcement["next_hop"]
+                if "prefixes" in announcement:
+                    for prefix in announcement["prefixes"]:
+                        unpacked.append({
+                            "type": "announcement",
+                            "prefix": prefix,
+                            "peer": data["peer"],
+                            "path": data["path"],
+                            "next_hop": next_hop
+                        })
+
+        if "withdrawals" in data:
+            for prefix in data["withdrawals"]:
+                unpacked.append({
+                    "type": "withdrawal",
+                    "prefix": prefix,
+                    "peer": data["peer"]
+
+                })
+
+        return unpacked
+
     def subscribe(self, prefixes):
         self.prefixes = prefixes
         ip_list = list(map(ipaddress.ip_network, self.prefixes.keys()))
@@ -145,19 +158,19 @@ class RisListener:
                     "moreSpecific": True,
                     "type": "UPDATE",
                     "socketOptions": {
-                        "includeRaw": False,
-                        "explodePrefixes": True,
+                        "includeRaw": False
                     }
                 }
             }))
 
         for data in self.ws:
             try:
-                parsed = json.loads(data)
-                if parsed and type in parsed and parsed["type"] == "ris_message" and data in parsed:
-                    if parsed["data"]["source"] == "announcements":
-                        self._filter_hijack(parsed)
-                    elif parsed["data"]["source"] == "withdrawals":
-                        self._filter_visibility(parsed)
+                json_data = json.loads(data)
+                if "type" in json_data and json_data["type"] == "ris_message":
+                    for parsed in self.unpack(json_data):
+                        if parsed["type"] is "announcement":
+                            self._filter_hijack(parsed)
+                        elif parsed["type"] is "withdrawal":
+                            self._filter_visibility(parsed)
             except:
                 print("Error while reading the JSON from WS")

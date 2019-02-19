@@ -1,4 +1,3 @@
-numpy==1.16.1
 pyaml==18.11.0
 PyYAML==4.2b1
 six==1.12.0

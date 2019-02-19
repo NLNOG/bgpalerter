@@ -1,38 +1,62 @@
 # BGPalerter
 # Copyright (C) 2019  Massimo Candela <https://massimocandela.com>
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, version 3 of the License.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Licensed under BSD 3-Clause License. See LICENSE for more details.
 
 from ris_listener import RisListener
-import os
 from threading import Timer
 
 
 class BGPalerter:
 
-    def __init__(self, config, monitored_prefixes):
-        self.monitored_prefixes = monitored_prefixes
+    def __init__(self, config):
+        self.monitored_prefixes = {}
         self.config = config
+
         self.stats = {
             "hijack": {},
             "low-visibility": {}
         }
+        self.callbacks = {
+            "hijack": [],
+            "low-visibility": [],
+            "difference": [],
+            "heartbeat": []
+        }
         self.reset_called = False
         self._check_stats()
-        # self._heartbeat()
+        self._heartbeat()
 
-        ris = RisListener(self.config.get("websocket-data-service"))
-        ris.on("hijack", self._collect_stats_hijack)
-        ris.on("withdrawal", self._collect_stats_low_visibility)
-        ris.subscribe(self.monitored_prefixes)
+        self._ris = RisListener(self.config.get("websocket-data-service"))
+        self._ris.on("hijack", self._collect_stats_hijack)
+        self._ris.on("difference", self._collect_stats_difference)
+        self._ris.on("withdrawal", self._collect_stats_low_visibility)
+
+    def _collect_stats_difference(self, data):
+        prefix = data["expected"]["prefix"]
+        more_specific = data["altered"]["prefix"]
+        self._publish("difference", "The prefix {} it is not configured to be announced with the more specific {}"
+                      .format(prefix, more_specific))
+
+    def monitor(self, prefixes):
+
+        def tranform(item):
+            return {
+                "origin": item["base_asn"],
+                "description": item.get("description"),
+                "monitor_more_specific": not item.get("ignore_morespec", False),
+            }
+
+        for item in prefixes.keys():
+            self.monitored_prefixes[item] = tranform(prefixes[item])
+
+        self._ris.subscribe(self.monitored_prefixes)
+
+    def on(self, event_name, callback):
+        if event_name in self.callbacks:
+            self.callbacks[event_name].append(callback)
+        else:
+            raise Exception('This is not a valid event: ' + event_name)
 
     def _collect_stats_hijack(self, data):
         key = data["expected"]["prefix"] + "-" + data["altered"]["prefix"] + \
@@ -56,8 +80,7 @@ class BGPalerter:
         if prefix not in self.stats["low-visibility"]:
             self.stats["low-visibility"][prefix] = {}
 
-            self.stats["low-visibility"][prefix][peer] = True
-
+        self.stats["low-visibility"][prefix][peer] = True
 
     def reset(self):
         self.stats = {
@@ -69,14 +92,14 @@ class BGPalerter:
         Timer(self.config.get("repeat-alert-after-seconds", 10), self._check_stats).start()
         triggered = False
         for key, value in self.stats["hijack"].items():
-            if len(value["peers"]) > self.config.get("number-peers-before-hijack-alert", 0):
-                self._send_to_slack(self._get_hijack_alert_message(value))
+            if len(value["peers"]) >= self.config.get("number-peers-before-hijack-alert", 0):
+                self._publish("low-visibility", self._get_hijack_alert_message(value))
                 triggered = True
 
         for prefix, value in self.stats["low-visibility"].items():
             number_peers = len(value.items())
-            if number_peers > self.config.get("number-peers-before-low-visibility-alert", 0):
-                self._send_to_slack(self._get_low_visibility_alert_message(prefix, number_peers))
+            if number_peers >= self.config.get("number-peers-before-low-visibility-alert", 0):
+                self._publish("hijack", self._get_low_visibility_alert_message(prefix, number_peers))
                 triggered = True
 
         if not self.reset_called and triggered:
@@ -96,16 +119,13 @@ class BGPalerter:
     def _get_low_visibility_alert_message(self, prefix, number_peers):
         return "The prefix " + prefix + " is not visible anymore from " + str(number_peers) + " peers"
 
-    def _send_to_slack(self, message):
-        print(message)
-        command = "curl -X POST -H 'Content-type: application/json' --data '{\"text\": \"" + message + "\"}' " + \
-                  self.config.get("slack-web-hook")
-        os.system(command)
+    def _publish(self, event_name, message):
+        for call in self.callbacks[event_name]:
+            call(message)
 
     def _heartbeat(self):
-        print("heartbeat")
         heartbeat_time = self.config.get("repeat-status-heartbeat-after-seconds", 0)
         if heartbeat_time > 0:
             Timer(heartbeat_time, self._heartbeat).start()
-        self._send_to_slack("Still monitoring...")
+        self._publish("heartbeat", "Still monitoring...")
 

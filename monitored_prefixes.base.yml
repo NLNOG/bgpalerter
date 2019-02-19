@@ -1,4 +1,4 @@
-84.205.64.0/24:
+84.205.65.0/25:
     description: A description
     base_asn: 3333
     ignore_morespec: False
