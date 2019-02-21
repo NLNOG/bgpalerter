@@ -30,7 +30,8 @@ class BGPalerter:
         self._ris = RisListener(self.config.get("websocket-data-service"))
         self._ris.on("hijack", self._collect_stats_hijack)
         self._ris.on("difference", self._collect_stats_difference)
-        self._ris.on("withdrawal", self._collect_stats_low_visibility)
+        self._ris.on("withdrawal", lambda data: self._collect_stats_low_visibility(data, False))
+        self._ris.on("announcement", lambda data: self._collect_stats_low_visibility(data, True))
 
     def _collect_stats_difference(self, data):
         prefix = data["expected"]["prefix"]
@@ -73,14 +74,14 @@ class BGPalerter:
                 "description": data["description"]
             }
 
-    def _collect_stats_low_visibility(self, data):
+    def _collect_stats_low_visibility(self, data, add):
         prefix = data["prefix"]
         peer = data["peer"]
 
         if prefix not in self.stats["low-visibility"]:
             self.stats["low-visibility"][prefix] = {}
 
-        self.stats["low-visibility"][prefix][peer] = True
+        self.stats["low-visibility"][prefix][peer] = not add
 
     def reset(self):
         self.stats = {
@@ -93,13 +94,13 @@ class BGPalerter:
         triggered = False
         for key, value in self.stats["hijack"].items():
             if len(value["peers"]) >= self.config.get("number-peers-before-hijack-alert", 0):
-                self._publish("low-visibility", self._get_hijack_alert_message(value))
+                self._publish("hijack", self._get_hijack_alert_message(value))
                 triggered = True
 
         for prefix, value in self.stats["low-visibility"].items():
             number_peers = len(value.items())
             if number_peers >= self.config.get("number-peers-before-low-visibility-alert", 0):
-                self._publish("hijack", self._get_low_visibility_alert_message(prefix, number_peers))
+                self._publish("low-visibility", self._get_low_visibility_alert_message(prefix, number_peers))
                 triggered = True
 
         if not self.reset_called and triggered:

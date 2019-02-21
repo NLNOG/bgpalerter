@@ -22,6 +22,7 @@ class RisListener:
         self.callbacks = {
             "hijack": [],
             "withdrawal": [],
+            "announcement": [],
             "difference": []
         }
 
@@ -84,6 +85,23 @@ class RisListener:
                 call({
                     "prefix": str_prefix,
                     "peer": peer
+                })
+
+    def _filter_announcement(self, item):
+        str_prefix = item["prefix"]
+        peer = item["peer"]
+        path = item["path"]
+        next_hop = item["next_hop"]
+        prefix = ipaddress.ip_network(str_prefix)
+        same_version_prefix_index = self.prefixes_index[str(prefix.version)]
+
+        if prefix in same_version_prefix_index:
+            for call in self.callbacks["announcement"]:
+                call({
+                    "prefix": str_prefix,
+                    "peer": peer,
+                    "path": path,
+                    "next_hop": next_hop
                 })
 
     def _filter_hijack(self, item):
@@ -170,6 +188,7 @@ class RisListener:
                     for parsed in self.unpack(json_data):
                         if parsed["type"] is "announcement":
                             self._filter_hijack(parsed)
+                            self._filter_announcement(parsed)
                         elif parsed["type"] is "withdrawal":
                             self._filter_visibility(parsed)
             except:
