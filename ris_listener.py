@@ -126,8 +126,9 @@ class RisListener:
             else:
                 for supernet in same_version_prefix_index:
                     if prefix.subnet_of(supernet):
-                        return self._detect_hijack(str(supernet), self.prefixes[str(supernet)]["origin"], str_prefix,
-                                                   origin_as, peer, self.prefixes[str(supernet)]["description"])
+                        if self.prefixes[str(supernet)]["monitor_more_specific"]:
+                            return self._detect_hijack(str(supernet), self.prefixes[str(supernet)]["origin"], str_prefix,
+                                                       origin_as, peer, self.prefixes[str(supernet)]["description"])
 
         return  # nothing strange
 
