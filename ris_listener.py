@@ -23,7 +23,8 @@ class RisListener:
             "hijack": [],
             "withdrawal": [],
             "announcement": [],
-            "difference": []
+            "difference": [],
+            "error": []
         }
 
         ws = websocket.WebSocket()
@@ -184,12 +185,18 @@ class RisListener:
         for data in self.ws:
             try:
                 json_data = json.loads(data)
-                if "type" in json_data and json_data["type"] == "ris_message":
-                    for parsed in self.unpack(json_data):
-                        if parsed["type"] is "announcement":
-                            self._filter_hijack(parsed)
-                            self._filter_announcement(parsed)
-                        elif parsed["type"] is "withdrawal":
-                            self._filter_visibility(parsed)
+                if "type" in json_data:
+
+                    if json_data["type"] == "ris_error":
+                        for call in self.callbacks["error"]:
+                            call(json_data)
+
+                    if json_data["type"] == "ris_message":
+                        for parsed in self.unpack(json_data):
+                            if parsed["type"] is "announcement":
+                                self._filter_hijack(parsed)
+                                self._filter_announcement(parsed)
+                            elif parsed["type"] is "withdrawal":
+                                self._filter_visibility(parsed)
             except:
                 print("Error while reading the JSON from WS")
