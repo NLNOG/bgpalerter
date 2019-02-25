@@ -61,7 +61,7 @@ class RisListener:
                     "description": description,
                     "peer": peer
                 })
-        else:
+        elif hijacked_prefix != original_prefix:
             for call in self.callbacks["difference"]:
                 call({
                     "expected": {
