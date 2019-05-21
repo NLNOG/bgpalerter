@@ -1,0 +1,20 @@
+Project goals
+=============
+
+
+1/ script without webui, that mimics the bgpmon functionality
+   use the bgpmon yaml configuration file as input
+
+other ideas:
+
+- API to retrieve a list of current (or past) alerts, or clear alerts
+
+- some autodiscovery, the script can detect in which ASN it is running, it can then recommend a list of things to monitor
+  we want to get to the point where you can launch the script ala './script -m noc@organisation.net' and be done
+
+- webui with accounts, where people can sign up in the hosted version
+  anyone can indicate interest in monitoring any resource, we don't need
+  to figure out who owns what.
+
+- make a "BIRD to RIS Live" converter so interact with the NLNOG Looking Glass
+  so that we have a backup for the "RIS Live" backup.
