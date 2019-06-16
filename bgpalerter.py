@@ -33,7 +33,7 @@ class BGPalerter:
         self._ris.on("difference", self._collect_stats_difference)
         self._ris.on("withdrawal", lambda data: self._collect_stats_low_visibility(data, False))
         self._ris.on("announcement", lambda data: self._collect_stats_low_visibility(data, True))
-        self._ris.on("error", lambda data: self._publish(self, "error", data))
+        self._ris.on("error", lambda data: self._publish("error", data))
 
     def _collect_stats_difference(self, data):
         prefix = data["expected"]["prefix"]
