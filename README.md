@@ -1,4 +1,11 @@
 # BGPalerter
+
+# NOTICE: BGPalerter was rewritten from scratch and moved, please take a look at the new code base
+
+The new fresh code base can be found at <a href="https://github.com/nttgin/bgpalerter">nttgin/bgpalerter</a>
+
+# Old README
+
 BGPalerter is a script to monitor in real time if a list of <prefix, AS> pairs are announced consistently.
 
 It uses the [real-time RIPE RIS](https://ris-live.ripe.net/) streaming service to obtain BGP messages with a delay in the order of seconds.
