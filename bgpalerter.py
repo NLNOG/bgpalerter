@@ -5,6 +5,7 @@
 
 from ris_listener import RisListener
 from threading import Timer
+from functools import partial
 
 
 class BGPalerter:
@@ -24,7 +25,7 @@ class BGPalerter:
             "heartbeat": [],
             "error": []
         }
-        self.reset_called = False
+        self.triggered = {"hijack": set(), "low-visibility": set()}
         self._check_stats()
         self._heartbeat()
 
@@ -85,29 +86,31 @@ class BGPalerter:
 
         self.stats["low-visibility"][prefix][peer] = not add
 
-    def reset(self):
-        self.stats = {
-            "hijack": {},
-            "low-visibility": {}
-        }
+    def reset(self, k="", v=""):
+        try:
+            del self.stats[k][v]
+            print("{}: stats reset: [{}][{}]".format(self.__class__.__name__, k, v))
+        except KeyError:
+            print("{}: failed to reset stats: KeyError: [{}][{}]".format(self.__class__.__name__, k, v))
+        self.triggered[k].remove(v)
 
     def _check_stats(self):
         Timer(self.config.get("repeat-alert-after-seconds", 10), self._check_stats).start()
-        triggered = False
         for key, value in self.stats["hijack"].items():
             if len(value["peers"]) >= self.config.get("number-peers-before-hijack-alert", 0):
                 self._publish("hijack", self._get_hijack_alert_message(value))
-                triggered = True
+                self.triggered["hijack"].add(key)
 
         for prefix, value in self.stats["low-visibility"].items():
-            number_peers = len(value.items())
+            # count only if v is True
+            number_peers = len({ k:v for (k, v) in value.items() if v })
             if number_peers >= self.config.get("number-peers-before-low-visibility-alert", 0):
                 self._publish("low-visibility", self._get_low_visibility_alert_message(prefix, number_peers))
-                triggered = True
+                self.triggered["low-visibility"].add(prefix)
 
-        if not self.reset_called and triggered:
-            Timer(self.config.get("reset-after-seconds", 600), self.reset).start()
-            self.reset_called = True
+        for k, s in self.triggered.items():
+            for v in s:
+                Timer(self.config.get("reset-after-seconds", 600), partial(self.reset, k=k, v=v)).start()
 
     def _get_hijack_alert_message(self, data):
         message = "Possible Hijack, it should be " + data["expected"]["prefix"] + \
